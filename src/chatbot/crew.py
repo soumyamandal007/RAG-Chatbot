@@ -1,6 +1,5 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
-# from chatbot.src.chatbot.pinecone_vectorstore import VectorStore
 from vectorstore import VectorStore
 from chunker import DocumentChunker
 from datetime import datetime

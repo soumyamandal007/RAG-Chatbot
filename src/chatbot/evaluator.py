@@ -1,10 +1,3 @@
-# from deepeval.metrics import (
-#     ContextualPrecisionMetric,
-#     ContextualRecallMetric,
-#     ContextualRelevancyMetric,
-#     AnswerRelevancyMetric,
-#     FaithfulnessMetric
-# )
 import google.generativeai as genai
 import json
 from pathlib import Path

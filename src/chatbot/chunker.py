@@ -1,6 +1,5 @@
 from chonkie import WordChunker, SemanticChunker
 from pathlib import Path
-from chatbot.src.chatbot.pinecone_vectorstore import VectorStore
 import os
 
 class DocumentChunker:
@@ -63,17 +62,3 @@ class DocumentChunker:
         
         return results
 
-# Usage example for indexing documents
-# def index_documents(knowledge_dir="knowledge", vector_store=None):
-#     """Index all documents in the knowledge directory."""
-#     if vector_store is None:
-#         vector_store = VectorStore()
-    
-#     chunker = DocumentChunker(use_semantic=True)  # Use semantic chunking for better results
-#     chunks_with_metadata = chunker.chunk_directory(knowledge_dir)
-    
-#     texts = [chunk["text"] for chunk in chunks_with_metadata]
-#     metadatas = [chunk["metadata"] for chunk in chunks_with_metadata]
-    
-#     vector_store.add_texts(texts, metadatas)
-#     return len(texts)
