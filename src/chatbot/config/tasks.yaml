@@ -1,0 +1,67 @@
+# # index_documents_task:
+# #   description: >
+# #     Process all documents in the knowledge directory.
+# #     Chunk them appropriately using semantic chunking techniques.
+# #     Index them in the vector database for efficient retrieval.
+# #   expected_output: >
+# #     A summary of the indexing process, including number of documents processed,
+# #     chunks created, and any issues encountered.
+# #   agent: knowledge_indexer
+
+# # retrieval_task:
+# #   description: >
+# #     Based on the user query: "{user_query}"
+# #     Retrieve the most relevant information from our knowledge base.
+# #     Make sure to formulate effective search queries.
+# #   expected_output: >
+# #     The most relevant context information that will help answer the user's query.
+# #     Include source information and confidence levels for each piece of retrieved information.
+# #   agent: researcher
+
+# # context_evaluation_task:
+# #   description: >
+# #     Analyze the retrieved context regarding: "{user_query}"
+# #     Context: "{retrieved_context}"
+# #     Determine if this information is sufficient to provide a complete and accurate answer.
+# #     If not, specify what additional information is needed.
+# #   expected_output: >
+# #     An evaluation of the context completeness and a decision on whether more retrieval is needed.
+# #     If more retrieval is needed, provide specific guidance on what to search for next.
+# #   agent: context_evaluator
+
+# # response_generation_task:
+# #   description: >
+# #     Based on the user query: "{user_query}"
+# #     And the retrieved context: "{retrieved_context}"
+# #     Generate a comprehensive response that accurately answers the query using only the provided context.
+# #     Cite sources where appropriate.
+# #   expected_output: >
+# #     A complete, accurate response that directly addresses the user's query while staying faithful
+# #     to the retrieved information. No hallucinations or information not present in the context.
+# #   agent: response_generator
+
+# # evaluation_task:
+# #   description: >
+# #     Evaluate the quality of the retrieval and generation process.
+# #     User query: "{user_query}"
+# #     Retrieved context: "{retrieved_context}"
+# #     Generated response: "{generated_response}"
+# #     Measure contextual precision, recall, relevancy, answer relevancy, and faithfulness.
+# #   expected_output: >
+# #     A detailed evaluation with scores for each metric and suggestions for improvement.
+# #   agent: context_evaluator
+
+# index_documents_task:
+#   description: "Index documents from the knowledge base"
+#   expected_output: "Successfully indexed documents"
+#   agent: knowledge_indexer
+
+# retrieval_task:
+#   description: "Search for relevant information in the knowledge base"
+#   expected_output: "Retrieved relevant context"
+#   agent: researcher
+
+# response_generation_task:
+#   description: "Generate a response based on the retrieved context"
+#   expected_output: "Generated response based on context"
+#   agent: response_generator
