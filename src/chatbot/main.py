@@ -37,7 +37,8 @@ def run():
         print("Response:")
         print(result['response'])
         print("\n" + "="*50)
-        
+        print(result['retrieved_context'])
+        print("\n" + "="*50)
         if result['evaluation']:
             print("\nEvaluation Results:")
             print("-" * 30)

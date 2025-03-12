@@ -4,7 +4,7 @@ from chatbot.src.chatbot.pinecone_vectorstore import VectorStore
 import os
 
 class DocumentChunker:
-    def __init__(self, chunk_size=512, chunk_overlap=50, use_semantic=True):
+    def __init__(self, chunk_size=512, chunk_overlap=100, use_semantic=True):
         """
         Initialize a document chunker.
         

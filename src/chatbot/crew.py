@@ -10,10 +10,6 @@ from crewai_tools import QdrantVectorSearchTool
 from transformers import AutoTokenizer, AutoModel
 import torch
 
-from crewai.tools import BaseTool
-from typing import Type
-from pydantic import BaseModel, Field
-from pydantic import PrivateAttr
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -39,10 +35,8 @@ qdrant_tool = QdrantVectorSearchTool(
     qdrant_url=os.getenv("QDRANT_URL"),
     qdrant_api_key=os.getenv("QDRANT_API_KEY"),
     collection_name="document_chunks",
-    limit=3,
+    limit=5,
     custom_embedding_fn=custom_embeddings,  # Pass the custom embedding function
-    filter_by=None,  # Add this
-    filter_value=None , # Add this
     score_threshold=0.01,
 )
 
@@ -67,7 +61,8 @@ class RAGChatbot:
                 - Identifies key concepts and relationships
                 - Ensures retrieved information is relevant and complete""",
             tools=[qdrant_tool],
-            allow_delegation=False
+            allow_delegation=False,
+            max_retries=3  # Add retry attempts
         )
 
     @agent
@@ -86,34 +81,36 @@ class RAGChatbot:
                 - Maintains coherent narrative flow
                 - Balances technical depth with accessibility""",
             tools=[qdrant_tool],
-            allow_delegation=False
+            allow_delegation=False,
+            max_retries=3  # Add retry attempts
         )
         
     @task
     def retrieval_task(self) -> Task:
         return Task(
-            description="""Analyze the query and retrieve comprehensive context by:
-                1. Understanding the core question and related concepts
-                2. Performing targeted searches with appropriate keywords
-                3. Ensuring all relevant aspects are covered
-                4. Validating context completeness and relevance
-                5. Organizing retrieved information logically""",
+            description="""IMPORTANT: Search for information about: {user_query}
+                Steps:
+                1. Use the qdrant_tool to search with the user's query
+                2. If needed, perform additional searches with key terms
+                3. Review and validate all search results
+                4. Return only relevant information""",
             agent=self.researcher(),
-            expected_output="Comprehensive and relevant context information, organized by topic"
+            expected_output="Retrieved information that answers the query",
+            context_vars=["user_query"]  # Explicitly tell the task which input variables to use
         )
 
     @task
     def response_generation_task(self) -> Task:
         return Task(
-            description="""Create a detailed, well-structured response that:
-                1. Directly addresses the user's specific question
-                2. Synthesizes all relevant context into a coherent narrative
-                3. Provides clear explanations with examples
-                4. Uses appropriate technical depth
-                5. Maintains focus on the query's core topic
-                6. Includes practical implications where relevant""",
+            description="""Create a response for: {user_query}
+                Steps:
+                1. Use the retrieved information from the previous task
+                2. Synthesize a clear and accurate response
+                3. Include relevant examples if available
+                4. Ensure the response directly answers the question""",
             agent=self.response_generator(),
-            expected_output="Comprehensive, relevant, and well-structured response with clear examples and explanations"
+            expected_output="A comprehensive response that answers the user's query",
+            context=[self.retrieval_task()]
         )
 
     @crew
@@ -156,44 +153,62 @@ class RAGChatbot:
 
     def answer_question(self, user_query):
         """Answer a user's question using the retrieval and response generation tasks."""
-        # Retrieve context from the vector store
-        context = self.vector_store.search(user_query, top_k=3)
-        context_text = "\n".join([result["text"] for result in context])
-        
-        inputs = {
-            'topic': 'Machine Learning',
-            'user_query': user_query,
-            'retrieved_context': context_text,
-            # 'instructions': (
-            #     "Generate a clear, structured response using only the information from the provided context. "
-            #     "When invoking the 'Search Knowledge Base' tool, please return a JSON object in the following format: "
-            #     "{\"query\": \"<your query>\", \"top_k\": 3}. Do not include any extra keys such as 'description' or 'type'."
-            # ),
-            'instructions': (
-            "Generate a clear, structured response using only the provided context. "
-            "When calling the 'qdrant_tool' tool, please return a valid JSON object with only the keys 'query' and 'top_k'. "
-            "For example: {\"query\": \"What factors affect the performance of a machine learning model?\", \"top_k\": 3}. "
-            "Do not include any extra keys such as 'description' or 'type'."
-        ),
-            'current_year': str(datetime.now().year)
-        }
-        
-        # Create the crew and execute tasks sequentially
-        crew_instance = self.crew() 
-        response = crew_instance.kickoff(inputs=inputs)
-        
-        # Add evaluation
-        from evaluator import RAGEvaluator
-        evaluator = RAGEvaluator()
-        evaluation_results = evaluator.evaluate_response(
-            query=user_query,
-            context=context_text,
-            response=response
-        )
-        
-        return {
-            'user_query': user_query,
-            'retrieved_context': context_text,
-            'response': response,
-            'evaluation': evaluation_results  # Evaluation is omitted for now
-        }
+        try:
+            inputs = {
+                'user_query': user_query,
+                'instructions': (
+                    f"Answer this specific question: {user_query}\n\n"
+                    "Steps:\n"
+                    "1. Search the knowledge base for relevant information\n"
+                    "2. Create a clear, structured response\n"
+                    "3. Include examples when available\n"
+                    "4. Ensure accuracy and completeness"
+                ),
+                'current_year': str(datetime.now().year)
+            }
+            
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    crew_instance = self.crew()
+                    response = crew_instance.kickoff(inputs=inputs)
+                    # Add evaluation using RAGEvaluator
+                    from evaluator import RAGEvaluator
+                    evaluator = RAGEvaluator()
+                    
+                    # Get context for evaluation
+                    context = self.vector_store.search(user_query, top_k=5)
+                    context_text = "\n".join([result["text"] for result in context])
+                    
+                    # Perform evaluation
+                    evaluation_results = evaluator.evaluate_response(
+                        query=user_query,
+                        context=context_text,
+                        response=response
+                    )
+                    
+                    return {
+                        'user_query': user_query,
+                        'retrieved_context': context_text,
+                        'response': response,
+                        'evaluation': evaluation_results
+                    }
+                except ValueError as e:
+                    if attempt < max_retries - 1:
+                        print(f"Attempt {attempt + 1} failed, retrying...")
+                        continue
+                    raise
+                    
+            return {
+                'user_query': user_query,
+                'response': "I apologize, but I encountered an error processing your query. Please try again.",
+                'evaluation': None
+            }
+            
+        except Exception as e:
+            print(f"Error processing query: {str(e)}")
+            return {
+                'user_query': user_query,
+                'response': "An error occurred while processing your request. Please try again.",
+                'evaluation': None
+            }

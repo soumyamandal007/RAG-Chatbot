@@ -38,7 +38,7 @@ class VectorStore:
             metadatas = [{} for _ in texts]
         
         processed_texts = [str(text.text) if hasattr(text, "text") else str(text) for text in texts]
-        print("This is the processed texts", processed_texts)
+        # print("This is the processed texts", processed_texts)
         
         try:
             embeddings = self.encoder.encode(processed_texts).tolist()
@@ -76,7 +76,7 @@ class VectorStore:
                 with_payload=True,
                 with_vectors=False
             ).points
-            print(search_result)
+            
             results = []
             if not search_result:
                 return [{"text": "No relevant information found.", "metadata": {}, "score": 0}]
@@ -95,7 +95,7 @@ class VectorStore:
                 return [{"text": "I apologize, but I don't have any relevant information to answer this question.", "metadata": {}, "score": 0}]
             
             results = sorted(results, key=lambda x: x["score"], reverse=True)
-            print("Search results:", results)
+            # print("Search results:", results)
             return results
             
         except Exception as e:
